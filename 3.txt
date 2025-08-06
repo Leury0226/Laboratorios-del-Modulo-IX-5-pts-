@@ -1,0 +1,34 @@
+sudo apt update
+sudo apt install -y ansible
+ansible --version
+
+
+sudo adduser ansible
+sudo usermod -aG sudo ansible
+
+
+net user ansible Passw0rd! /add
+net localgroup Administrators ansible /add
+
+
+sudo su - ansible
+ssh-keygen -t rsa -b 4096
+ssh-copy-id ansible@137.184.159.103
+
+ssh ansible@137.184.159.103
+
+
+sudo nano /etc/ansible/hosts
+
+[linux]
+cliente1 ansible_host=<137.184.159.103> ansible_user=ansible
+
+[win]
+cliente2 ansible_host=<192.168.100.20> ansible_user=ansible ansible_password=Passw0rd! ansible_connection=winrm ansible_winrm_transport=basic ansible_winrm_server_cert_validation=ignore
+
+sudo apt install -y python3-pip
+pip3 install pywinrm
+
+ansible linux -m ping
+ansible win -m win_ping
+

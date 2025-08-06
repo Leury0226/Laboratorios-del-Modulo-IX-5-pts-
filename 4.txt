@@ -1,0 +1,6 @@
+echo "Este es un mensaje desde Ansible Controller" > /home/leury/Desktop/mensaje.txt
+
+ansible cliente2 -m win_copy -a 'src=/home/leury/Desktop/mensaje.txt dest=C:\\Users\\ansible\\Documents\\mensaje.txt'
+
+
+ansible cliente1 -m reboot --become

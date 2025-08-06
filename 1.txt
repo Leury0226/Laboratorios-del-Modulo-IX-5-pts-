@@ -1,0 +1,13 @@
+wget https://www.webmin.com/download/deb/webmin-current.deb
+sudo apt install -y libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl openssl python3
+sudo dpkg -i webmin-current.deb
+
+
+ip a
+sudo systemctl status webmin
+sudo /usr/share/webmin/miniserv.pl /etc/webmin/miniserv.conf
+sudo lsof -i :10000
+
+https://10.0.2.15:10000
+
+

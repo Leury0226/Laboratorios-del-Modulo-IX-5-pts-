@@ -1,0 +1,42 @@
+sudo apt update && sudo apt install -y wget unzip gnupg software-properties-common
+wget https://releases.hashicorp.com/terraform/1.8.4/terraform_1.8.4_linux_amd64.zip
+unzip terraform_1.8.4_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+terraform -v
+
+mkdir ~/terraform-do && cd ~/terraform-do
+
+
+nano main.tf
+
+provider "digitalocean" {
+  token = "834984034304394"
+}
+
+resource "digitalocean_droplet" "os3vm" {
+  name   = "OS3vm"
+  region = "nyc1"
+  size   = "s-1vcpu-1gb"
+  image  = "ubuntu-22-04-x64"
+  ssh_keys = [ "039872308jdikfkjskjdf" ] # ID, no la llave
+}
+
+
+curl -X GET -H "Content-Type: application/json" \
+-H "Authorization: Bearer TU_TOKEN_DO" \
+https://api.digitalocean.com/v2/account/keys
+
+
+terraform init
+
+terraform plan
+
+terraform apply
+
+ssh root@137.184.159.103
+
+
+
+
+
+

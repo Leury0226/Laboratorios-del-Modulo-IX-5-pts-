@@ -1,0 +1,53 @@
+cd ~/Desktop
+nano install_notepad.yml
+
+---
+- name: Instalar Notepad++ en cliente Windows
+  hosts: cliente2
+  tasks:
+    - name: Ejecutar el instalador de Notepad++
+      ansible.windows.win_package:
+        path: C:\Users\ansible\Downloads\npp_installer.exe
+        state: present
+
+
+
+
+ansible cliente2 -m win_copy -a 'src=/home/leury/Downloads/npp_installer.exe dest=C:\\Users\\ansible\\Downloads\\npp_installer.exe'
+
+ansible-playbook install_notepad.yml
+
+
+
+
+
+
+
+nano install_nginx.yml
+
+---
+- name: Instalar NGINX en cliente Linux
+  hosts: cliente1
+  become: true
+  tasks:
+    - name: Instalar NGINX
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Iniciar el servicio NGINX
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+
+
+ansible-playbook install_nginx.yml
+
+curl http:137.184.159.103
+
+
+
+
