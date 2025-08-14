@@ -7,24 +7,153 @@ terraform -v
 mkdir ~/terraform-do && cd ~/terraform-do
 
 
-nano main.tf
-
-provider "digitalocean" {
-  token = "834984034304394"
-}
-
-resource "digitalocean_droplet" "os3vm" {
-  name   = "OS3vm"
-  region = "nyc1"
-  size   = "s-1vcpu-1gb"
-  image  = "ubuntu-22-04-x64"
-  ssh_keys = [ "039872308jdikfkjskjdf" ] # ID, no la llave
-}
-
 
 curl -X GET -H "Content-Type: application/json" \
--H "Authorization: Bearer TU_TOKEN_DO" \
+-H "Authorization: Bearer dop_v1_7d9324d3d958467c386733b3103c336440214bd32cd97f4217ae9a6a6e3a9a6e" \
 https://api.digitalocean.com/v2/account/keys
+
+
+
+
+
+# Crear una llave nueva (enter para ruta por defecto, y passphrase opcional)
+ssh-keygen -t ed25519 -C "profesor@example.com"
+# Ruta típica:
+#  - privada:  ~/.ssh/id_ed25519
+#  - pública:  ~/.ssh/id_ed25519.pub
+cat ~/.ssh/id_ed25519.pub
+
+# SHA256 (el más usado)
+ssh-keygen -lf ~/.ssh/id_ed25519.pub | awk '{print $2}'
+# Si necesitan en MD5 (menos común hoy):
+ssh-keygen -E md5 -lf ~/.ssh/id_ed25519.pub | awk '{print $2}'
+
+
+token
+dop_v1_810aa224f5f0b2010499e1b4cdd0cd92cc347a4ffbdcbd6417ebae293cb661c1
+
+clave publi
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDcUhE0Mj/+KSTW89Wnoksxd0vGOvS0Wu+vnhi/1VSoq leury@nodo2
+
+
+fingerprint
+df:4d:9b:8e:2b:37:11:03:26:c2:a2:77:05:1a:f2:3f
+
+
+nano variables.tf
+
+variable "do_token" {
+  description = "DigitalOcean API Token del profesor"
+  type        = string
+  sensitive   = true
+}
+
+variable "prof_fingerprint" {
+  description = "df:4d:9b:8e:2b:37:11:03:26:c2:a2:77:05:1a:f2:3f"
+  type        = string
+}
+
+variable "region" {
+  description = "Región de DigitalOcean"
+  type        = string
+  default     = "nyc1"
+}
+
+
+
+
+
+
+nano terraform.tfvars
+
+do_token         = "dop_v1_810aa224f5f0b2010499e1b4cdd0cd92cc347a4ffbdcbd6417ebae293cb661c1"
+prof_fingerprint = "df:4d:9b:8e:2b:37:11:03:26:c2:a2:77:05:1a:f2:3f"
+region           = "nyc1"
+
+
+
+
+
+nano main.tf
+
+
+
+terraform {
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "~> 2.39"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+  }
+}
+
+provider "digitalocean" {
+  token = var.do_token
+}
+
+resource "random_id" "suffix" {
+  byte_length = 2
+}
+
+resource "digitalocean_project" "examen_final" {
+  name        = "examen final-${random_id.suffix.hex}"
+  description = "Proyecto del examen final con Terraform"
+  purpose     = "Class project / sample"
+  environment = "Development"
+}
+
+resource "digitalocean_droplet" "ubuntu" {
+  name   = "server-examen"
+  region = var.region
+  size   = "s-1vcpu-1gb"
+  image  = "ubuntu-22-04-x64"
+
+  
+  ssh_keys = [var.prof_fingerprint]
+
+  monitoring = true
+}
+
+resource "digitalocean_firewall" "examen" {
+  name        = "fw-examenxx"
+  droplet_ids = [digitalocean_droplet.ubuntu.id]
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+inbound_rule {
+    protocol         = "tcp"
+    port_range       = "80"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "443"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "445"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "tcp"
+    port_range            = "all"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+}
+
+
 
 
 terraform init
@@ -33,10 +162,9 @@ terraform plan
 
 terraform apply
 
+
+terraform init -upgrade
+terraform apply -auto-approve
+
 ssh root@137.184.159.103
-
-
-
-
-
 
