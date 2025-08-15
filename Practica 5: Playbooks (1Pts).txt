@@ -176,3 +176,109 @@ ansible-playbook -i hosts instalar_notepad.yml
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ====== 0) (Opcional) Instalar Ansible en el Controller ======
+# Si ya tienes Ansible, salta este bloque.
+sudo apt update && sudo apt install -y ansible sshpass
+
+ssh-keygen -t rsa -b 4096 -C "tu_correo@example.com"
+
+# ====== 1) Asegura que puedes entrar por SSH a la VM de DigitalOcean ======
+# Sustituye XXX.XXX.XXX.XXX por la IP pública de tu droplet y la ruta de tu llave si aplica.
+ssh -i ~/.ssh/id_rsa root@XXX.XXX.XXX.XXX "echo OK" 
+
+# ====== 2) Crea el inventario de Ansible ======
+# Define el grupo [digitalocean] con el host y el usuario root (recién creado por DO).
+cat > inventario.ini <<'INI'
+[digitalocean]
+tu_vm_do ansible_host=XXX.XXX.XXX.XXX ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa
+INI
+# Reemplaza la IP en inventario.ini si no lo hiciste arriba.
+
+# ====== 3) Crea el playbook (usuario, sudo, update/upgrade, bashtop) ======
+# Nota: la contraseña 'adrian123' se cifra con SHA-512 por Ansible (password_hash).
+cat > practica_c.yml <<'YAML'
+---
+- name: Practica C - Crear usuario, actualizar repos e instalar bashtop
+  hosts: digitalocean
+  become: yes
+  tasks:
+    - name: Actualizar índices y paquetes (tipo dist-upgrade)
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Asegurar que el grupo sudo existe (por si la distro lo nombra sudo)
+      group:
+        name: sudo
+        state: present
+
+    - name: Crear usuario adrian123 con sudo
+      user:
+        name: adrian123
+        password: "{{ 'adrian123' | password_hash('sha512') }}"
+        groups: sudo
+        append: yes
+        shell: /bin/bash
+        state: present
+      # Para deshabilitar password y usar solo SSH, añade: password_lock: yes
+
+    - name: Instalar bashtop
+      apt:
+        name: bashtop
+        state: present
+YAML
+
+# ====== 4) Ejecuta el playbook ======
+ansible-playbook -i inventario.ini practica_c.yml
+
+# ====== 5) Validación rápida ======
+# a) Verifica que el usuario fue creado
+ssh -i ~/.ssh/id_rsa root@XXX.XXX.XXX.XXX "id adrian123 || getent passwd adrian123"
+
+# b) Prueba login con el nuevo usuario (si deseas activar clave, ya está definida como 'adrian123')
+#    Seguridad: cámbiala luego con 'passwd' o usa solo SSH keys.
+ssh -i ~/.ssh/id_rsa adrian123@XXX.XXX.XXX.XXX "bashtop --version || which bashtop"
+
+# c) Inicia bashtop (salir con q)
+ssh -t -i ~/.ssh/id_rsa adrian123@XXX.XXX.XXX.XXX "bashtop"
+
+
+
+
+
+
+
