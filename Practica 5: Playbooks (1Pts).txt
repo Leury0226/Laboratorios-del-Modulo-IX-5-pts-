@@ -51,3 +51,128 @@ curl http:137.184.159.103
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ============================================
+# KALI (ANSIBLE CONTROLLER) — PREPARACIÓN
+# Opción 1: usar virtualenv para pywinrm+credssp
+# ============================================
+
+sudo apt update                                   # Actualiza índices APT
+sudo apt install -y ansible python3-venv          # Instala Ansible y módulo para crear venv
+
+python3 -m venv ~/venvs/ansible-win               # Crea el entorno virtual para Ansible+WinRM
+source ~/venvs/ansible-win/bin/activate           # Activa el venv (hacerlo siempre antes de usar Ansible)
+
+pip install --upgrade pip                         # Actualiza pip dentro del venv
+pip install "pywinrm[credssp]"                    # Instala WinRM + CredSSP en el venv (no toca el sistema)
+
+# (Opcional) Forzar que Ansible use este Python del venv en esta sesión:
+export ANSIBLE_PYTHON_INTERPRETER="$(which python)"   # Asegura que ansible use el Python del venv
+
+# ============================================
+# WINDOWS (ansible2) — PREPARACIÓN WINRM
+# Ejecutar en PowerShell como Administrador
+# ============================================
+
+winrm quickconfig                                      # Habilita y configura WinRM básico (responder Y si pregunta)
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'   # Permite tráfico no cifrado (lab)
+winrm set winrm/config/service/auth '@{Basic="true"}'          # Habilita auth Basic (lab)
+New-NetFirewallRule -DisplayName "WinRM HTTPS" -Name "WinRM-HTTPS" -Protocol TCP -LocalPort 5986 -Action Allow  # Abre 5986
+New-Item -ItemType Directory -Force -Path C:\Temp       # Carpeta temporal para instaladores
+
+
+
+# ============================================
+# KALI — INVENTARIO ANSIBLE
+# Edita tu archivo de inventario (usa nano) y agrega el host Windows
+# ============================================
+
+nano hosts                                             # Abre/crea inventario
+
+# Contenido a pegar (ajusta IP/usuario/clave):
+# [win]
+# ansible2 ansible_host=IP_WINDOWS ansible_user=USUARIO ansible_password=CLAVE ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
+
+# ============================================
+# KALI — PRUEBA DE CONECTIVIDAD
+# (Con el venv ACTIVADO)
+# ============================================
+
+ansible -i hosts win -m win_ping                       # Debe responder "pong" si todo está OK
+
+# ============================================
+# KALI — PLAYBOOK PARA INSTALAR NOTEPAD++
+# Crea el archivo YAML y pega el contenido
+# ============================================
+
+nano instalar_notepad.yml
+
+# Pegar este contenido YAML:
+
+
+- name: Descargar instalador de Notepad++ en el Controller
+  hosts: localhost
+  gather_facts: false
+  vars:
+    npp_url: "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6.8/npp.8.6.8.Installer.x64.exe"
+    npp_local: "/tmp/npp_installer.exe"
+  tasks:
+    - name: Descargar instalador en Kali
+      ansible.builtin.get_url:
+        url: "{{ npp_url }}"
+        dest: "{{ npp_local }}"
+        mode: '0644'
+        timeout: 60
+
+
+- name: Instalar Notepad++ en ansible2
+  hosts: win
+  gather_facts: false
+  vars:
+    npp_local: "/tmp/npp_installer.exe"
+    npp_win: "C:\\Temp\\npp_installer.exe"
+  tasks:
+    - name: Asegurar carpeta C:\Temp en Windows
+      ansible.windows.win_file:
+        path: "C:\\Temp"
+        state: directory
+
+    - name: Copiar instalador desde Kali a Windows
+      ansible.windows.win_copy:
+        src: "{{ npp_local }}"
+        dest: "{{ npp_win }}"
+
+    - name: Instalar Notepad++ en modo silencioso
+      ansible.windows.win_package:
+        path: "{{ npp_win }}"
+        state: present
+        arguments: /S
+
+
+
+
+#para instalar:
+
+source ~/venvs/ansible-win/bin/activate
+export ANSIBLE_PYTHON_INTERPRETER="$(which python)"
+ansible-playbook -i hosts instalar_notepad.yml
+
+
+
+
+
